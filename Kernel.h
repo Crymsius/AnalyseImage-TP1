@@ -5,6 +5,9 @@
 class Kernel
 {
 public:
+	
+	Kernel();
+
 	explicit Kernel(const std::vector<std::vector<int>>& mat);
 
 	Kernel(const Kernel& other)

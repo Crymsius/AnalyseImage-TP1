@@ -20,11 +20,10 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "Kernel.h"
 #include "Image.h"
+#include "json.hpp"
+#include <fstream>
 
-Image image, destinationX, destinationY;
-cv::Mat destinationNorme, destinationDirection, destinationNormeSeuil, destinationNormeGris, GrisChan[3], seuilHaut, seuilHyst;
-cv::Mat destMulti0, destMulti1, destMulti2, destMulti3, distMulti, dirMulti, dirColorMulti;
-cv::Mat grayMulti0, grayMulti1, grayMulti2, grayMulti3;
+
 const int seuil_slider_max = 100;
 int seuil_slider = 20;
 float seuil;
@@ -32,7 +31,7 @@ float seuil;
 const int seuil_hyst_slider_max = 100;
 int seuil_hyst_slider = 10;
 float seuil_hyst;
-
+cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows);
 void seuillage (cv::Mat& source, cv::Mat& destination, float& threshold) {
     for (int j=0; j < source.size().width; ++j) {
         for (int i=0; i < source.size().height; ++i) {
@@ -67,58 +66,19 @@ void seuillage_second (cv::Mat& source, cv::Mat& intermediaire, cv::Mat& destina
 }
 
 void seuil_hysteresis (cv::Mat& source, cv::Mat& intermediaire, cv::Mat& destination, float& threshold_haut, float& threshold_bas ) {
-    seuillage(destinationNorme, seuilHaut, threshold_haut);
+    /*seuillage(destinationNorme, seuilHaut, threshold_haut);
     seuillage_second (destinationNorme, seuilHaut, seuilHyst, threshold_bas);
-    cv::imshow("haut", seuilHaut);
-}
-
-void fermeture_contours(float threshold_haut)
-{
-	
+    cv::imshow("haut", seuilHaut);*/
 }
 
 void on_trackbar( int, void* ) {
-    seuil = float(seuil_slider)/seuil_slider_max;
+   /* seuil = float(seuil_slider)/seuil_slider_max;
     seuillage(destinationNorme, destinationNormeSeuil, seuil);
     cv::imshow("gradientNormeSeuil", destinationNormeSeuil);
     
     seuil_hyst = float(seuil_hyst_slider)/seuil_hyst_slider_max;
     seuil_hysteresis(destinationNorme, seuilHaut, seuilHyst, seuil, seuil_hyst);
-    cv::imshow("Hysteresis", seuilHyst);
-}
-
-int convolution (cv::Mat image, cv::Mat derivee, const int i, const int j, const int color) {
-    // Problème sur les bords de l'image
-	auto temp = 0;
-    for (auto u = 0; u <= 2; u++) {
-        for (auto v = 0; v <= 2; v++) {
-            temp = temp + (derivee.at<int>(u,v) * image.at<cv::Vec3b>(i+(u-1),j+(v-1))[color]);
-        }
-    }
-    temp = abs(temp);
-    if (temp > 255) {
-        return 255;
-    }
-    else
-        return temp;
-}
-
-cv::Mat imageConvolution (cv::Mat image, const cv::Mat noyau) {
-    cv::Mat imageConvoluee(image.size().height-2,image.size().width-2,image.type());
-    
-    for (int i=1; i < image.size().height-1; ++i) {
-        for (int j=1; j < image.size().width-1; ++j) {
-            //On est dans l'image
-            for (int k = 0; k < image.channels(); k++) {
-                imageConvoluee.at<cv::Vec3b>(i-1,j-1)[k] = convolution(image, noyau, i, j, k);
-            }
-        }
-    }
-    return imageConvoluee;
-}
-
-float calcul_moyenne(unsigned a, unsigned b, unsigned c) {
-    return float((a+b+c))/3.f;
+    cv::imshow("Hysteresis", seuilHyst);*/
 }
 
 float findThreshold(const cv::Mat img) {
@@ -126,126 +86,111 @@ float findThreshold(const cv::Mat img) {
     return 1.f;
 }
 
-cv::Mat directionMulti(cv::Mat dist, cv::Mat& dirColor, cv::Mat a0, cv::Mat a1, cv::Mat a2, cv::Mat a3){
-    cv::Mat result(dist.size(), CV_32F);
-    
-    for (int i=0; i < dist.size().height; ++i) {
-        for (int j=0; j < dist.size().width; ++j) {
-            if (dist.at<uchar>(i,j) == 0){
-                result.at<float>(i,j) = 0;
-                dirColor.at<cv::Vec3b>(i,j) = cv::Vec3b(0,0,0);
-            } else if (dist.at<uchar>(i,j) == a0.at<uchar>(i,j)) {
-                result.at<float>(i,j) = 0;
-                dirColor.at<cv::Vec3b>(i,j) = cv::Vec3b(200,0,0);
-            } else if (dist.at<uchar>(i,j) == a1.at<uchar>(i,j)) {
-                result.at<float>(i,j) = 1 * (M_PI_4);
-                dirColor.at<cv::Vec3b>(i,j) = cv::Vec3b(0,200,0);
-            } else if (dist.at<uchar>(i,j) == a2.at<uchar>(i,j)) {
-                result.at<float>(i,j) = 2 * (M_PI_4);
-                dirColor.at<cv::Vec3b>(i,j) = cv::Vec3b(0,0,200);
-            } else {
-                result.at<float>(i,j) = 3 * (M_PI_4);
-                dirColor.at<cv::Vec3b>(i,j) = cv::Vec3b(255,255,255);
-            }
-        }
-    }
-
-    return result;
+void bidirectionnal()
+{
+	
 }
 
 int main(int argc, const char * argv[]) {
 	seuil = 0.0f;
-    
-    cv::Mat moyenne = cv::Mat::ones(3,3,CV_8UC1);
-	const Kernel deriveeX({
-		{ -1, 0, 1 },
-		{ -1, 0, 1 },
-		{ -1, 0, 1 }
-	});
 
-	const Kernel deriveeY({
-		{ -1, -1, -1 },
-		{  0,  0,  0 },
-		{  1,  1,  1 }
-	});
+	std::ifstream stream("config.json");
+	nlohmann::json json;
+	stream >> json;
 
-	const Kernel multi0({
-		{ -3, -3, 5 },
-		{ -3,  0, 5 },
-		{ -3, -3, 5 }
-	});
+	std::vector<Kernel> bidirectionnal_kernels(2);
+	auto t = 0;
+	if (json["bidirectionnal"].size() < 2)
+	{
+		std::cerr << "Not enough bidirectionnal kernel, expected 2" << std::endl;
+		exit(-2);
+	}
 
-	const Kernel multi1({
-		{ -3,  5,  5 },
-		{ -3,  0,  5 },
-		{ -3, -3, -3 }
-	});
+	for (auto elmt : json["bidirectionnal"])
+	{
+		if (t == 2)
+			break;
+		std::vector<std::vector<int>> tk(elmt.size());
+		for (auto i = 0; i < tk.size(); ++i)
+		{
+			tk[i].reserve(elmt[i].size());
+			for (auto j = 0; j < elmt[i].size(); ++j)
+				tk[i].push_back(elmt[i][j]);
+		}
+		bidirectionnal_kernels[t] = std::move(Kernel(tk));
+		++t;
+	}
 
-	const Kernel multi2({
-		{  5,  5,  5 },
-		{ -3,  0, -3 },
-		{ -3, -3, -3 }
-	});
+	std::vector<Kernel> multidirectionnal_kernels(4);
+	t = 0;
+	if (json["multidirectionnal"].size() < 4)
+	{
+		std::cerr << "Not enough multidirectionnal kernel, expected 4" << std::endl;
+		exit(-3);
+	}
+	for (auto elmt : json["multidirectionnal"])
+	{
+		if (t == 4)
+			break;
+		std::vector<std::vector<int>> tk(elmt.size());
+		for (auto i = 0; i < tk.size(); ++i)
+		{
+			tk[i].reserve(elmt[i].size());
+			for (auto j = 0; j < elmt[i].size(); ++j)
+				tk[i].push_back(elmt[i][j]);
+		}
+		multidirectionnal_kernels[t] = std::move(Kernel(tk));
+		++t;
+	}
+	std::string path = json["image_path"];
 
-	const Kernel multi3({
-		{  5,  5, -3 },
-		{  5,  0, -3 },
-		{ -3, -3, -3 }
-	});
-	//const cv::Mat deriveeX = (cv::Mat_<int>(3,3) << -1, 0, 1, -1, 0, 1, -1, 0, 1);
-	//const cv::Mat deriveeY = (cv::Mat_<int>(3,3) << -1, -1, -1, 0, 0, 0, 1, 1, 1);
+	Image image;
+	if (!image.readFromFile(path.c_str()))
+	{
+		std::cerr << "Image cannot be read" << std::endl;
+		exit(-4);
+	}
 
-	//const cv::Mat multi0 = (cv::Mat_<int>(3,3) << -3, -3, 5, -3, 0, 5, -3, -3, 5);
-	//const cv::Mat multi1 = (cv::Mat_<int>(3,3) << -3, 5, 5, -3, 0, 5, -3, -3, -3);
-	//const cv::Mat multi2 = (cv::Mat_<int>(3,3) << 5, 5, 5, -3, 0, -3, -3, -3, -3);
-	//const cv::Mat multi3 = (cv::Mat_<int>(3,3) << 5, 5, -3, 5, 0, -3, -3, -3, -3);
-    
-//    image = cv::imread("data/Lenna.png");
-	if (!image.readFromFile("data/1.png"))
-		return -1;
+	std::string threshold_type = json["seuillage"];
 
-/*    destinationNormeSeuil = cv::Mat(image.size().height-2,image.size().width-2, CV_32F);
-    seuilHaut = cv::Mat(image.size().height-2,image.size().width-2, CV_32F);
-    seuilHyst = cv::Mat(seuilHaut.size().height-2,seuilHaut.size().width-2, CV_32F);
-    
-    destMulti0 = cv::Mat(image.size().height-2,image.size().width-2,image.type());
-    destMulti1 = cv::Mat(image.size().height-2,image.size().width-2,image.type());
-    destMulti2 = cv::Mat(image.size().height-2,image.size().width-2,image.type());
-    destMulti3 = cv::Mat(image.size().height-2,image.size().width-2,image.type());
-    
-    distMulti = cv::Mat(destMulti0.size(), CV_32F);
-    dirColorMulti = cv::Mat(distMulti.size(), image.type());*/
-    
+	Image destinationNorme, destinationDirection, destinationNormeGris, GrisChan[3];
 
-    cv::namedWindow("image", 1);
-    cv::namedWindow("gradientnorm", 1);
-    cv::namedWindow("gradientdir", 1);
-    
-    //convolutions:
-    destinationX = image.convolution(deriveeX);
-    destinationY = image.convolution(deriveeY);
+	const unsigned new_height = image.height() - 2;
+	const unsigned new_width = image.width() - 2;
+
+	Image destinationNormeSeuil = Image(new_height, new_width);
+    Image seuilHaut = Image(new_height, new_width);
+    Image seuilHyst = Image(new_height, new_width);
+
+	// bidirectionnal
+    Image destinationX = image.convolution(bidirectionnal_kernels[0]);
+    Image destinationY = image.convolution(bidirectionnal_kernels[1]);
 	auto gradient = Image::bidirectionalGradient(destinationX, destinationY);
     
-/*    destMulti0 = imageConvolution(image, multi0);
-    destMulti1 = imageConvolution(image, multi1);
-    destMulti2 = imageConvolution(image, multi2);
-    destMulti3 = imageConvolution(image, multi3);*/
-    
-/*    cvtColor(destMulti0, grayMulti0, cv::COLOR_RGB2GRAY);
-    cvtColor(destMulti1, grayMulti1, cv::COLOR_RGB2GRAY);
-    cvtColor(destMulti2, grayMulti2, cv::COLOR_RGB2GRAY);
-    cvtColor(destMulti3, grayMulti3, cv::COLOR_RGB2GRAY);
+	// multidirectionnal
+    Image destMulti0 = image.convolution(multidirectionnal_kernels[0]);
+    Image destMulti1 = image.convolution(multidirectionnal_kernels[1]);
+    Image destMulti2 = image.convolution(multidirectionnal_kernels[2]);
+    Image destMulti3 = image.convolution(multidirectionnal_kernels[3]);
+	
+	Image grayMulti0 = destMulti0.toGray();
+	const Image grayMulti1 = destMulti1.toGray();
+	const Image grayMulti2 = destMulti2.toGray();
+	const Image grayMulti3 = destMulti2.toGray();
 
-    distMulti = max(grayMulti0, grayMulti1);
-    distMulti = max(distMulti, grayMulti2);
-    distMulti = max(distMulti, grayMulti3);
+	Image distMulti = Image::max(destMulti0.toGray(), destMulti1.toGray());
+    distMulti = Image::max(distMulti, destMulti2.toGray());
+    distMulti = Image::max(distMulti, destMulti3.toGray());
     
-    dirMulti = directionMulti(distMulti, dirColorMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
+	auto dir_color = Image::multidirectionalDirection(distMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
+	Image dirMulti = std::move(dir_color.first);
+	Image dirColorMulti = std::move(dir_color.second);
     
-    
+	
     seuil = 0.09f;
     seuil_hyst = 0.02f;
     
+	/*
     seuillage(destinationNorme, destinationNormeSeuil, seuil);
     
     GrisChan[0] = destinationNorme/255;
@@ -271,25 +216,26 @@ int main(int argc, const char * argv[]) {
     on_trackbar( seuil_slider, 0 );
     on_trackbar( seuil_hyst_slider, 0 );*/
     
-//    cv::imshow("image", image);
-//
-//    cv::imshow("gradX", destinationX);
-//    cv::imshow("gradY", destinationY);
 
-//    cv::imshow("multi0", destMulti0);
-//    cv::imshow("multi1", destMulti1);
-//    cv::imshow("multi2", destMulti2);
-//    cv::imshow("multi3", destMulti3);
-//    cv::imshow("gray0", grayMulti0);
-/*    cv::imshow("dist", distMulti);
-    cv::imshow("dir", dirMulti);
-    cv::imshow("dirColor", dirColorMulti);*/
-//
-//    cv::imshow("gradientNormeGris", destinationNormeGris);
-//    cv::imshow("gradientDirection", destinationDirection);
-    
-	cv::imshow("gradientnorm", gradient.first._Mat());
-	cv::imshow("gradientdir", gradient.second._Mat());
+	const std::vector<const cv::Mat*> image_matrices = {
+		&image._Mat(),
+		&destinationX._Mat(),
+		&destinationY._Mat(),
+		&destMulti0._Mat(),
+		&destMulti1._Mat(),
+		&destMulti2._Mat(),
+		&destMulti3._Mat(),
+		&grayMulti0._Mat(),
+		&distMulti._Mat(),
+		&dirMulti._Mat(),
+		&dirColorMulti._Mat(),
+		&gradient.first._Mat(),
+		&gradient.second._Mat(),
+		/*&destinationNormeGris._Mat(),
+		&destinationDirection._Mat()*/
+
+	};
+	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
     cv::waitKey(0);
     
     return 0;
@@ -297,3 +243,63 @@ int main(int argc, const char * argv[]) {
 
 
 
+/**
+* @brief makeCanvas Makes composite image from the given images
+* @param vecMat Vector of Images.
+* @param windowHeight The height of the new composite image to be formed.
+* @param nRows Number of rows of images. (Number of columns will be calculated
+*              depending on the value of total number of images).
+* @return new composite image.
+*/
+cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows) {
+	int N = vecMat.size();
+	nRows = nRows > N ? N : nRows;
+	const int edgeThickness = 10;
+	const int imagesPerRow = ceil(double(N) / nRows);
+	const int resizeHeight = floor(2.0 * ((floor(double(windowHeight - edgeThickness) / nRows)) / 2.0)) - edgeThickness;
+	int maxRowLength = 0;
+
+	std::vector<int> resizeWidth;
+	for (int i = 0; i < N;) {
+		int thisRowLen = 0;
+		for (int k = 0; k < imagesPerRow; k++) {
+			double aspectRatio = double(vecMat[i]->cols) / vecMat[i]->rows;
+			int temp = int(ceil(resizeHeight * aspectRatio));
+			resizeWidth.push_back(temp);
+			thisRowLen += temp;
+			if (++i == N) break;
+		}
+		if ((thisRowLen + edgeThickness * (imagesPerRow + 1)) > maxRowLength) {
+			maxRowLength = thisRowLen + edgeThickness * (imagesPerRow + 1);
+		}
+	}
+	int windowWidth = maxRowLength;
+	cv::Mat canvasImage(windowHeight, windowWidth, CV_8UC3, cv::Scalar(0, 0, 0));
+
+	for (int k = 0, i = 0; i < nRows; i++) {
+		int y = i * resizeHeight + (i + 1) * edgeThickness;
+		int x_end = edgeThickness;
+		for (int j = 0; j < imagesPerRow && k < N; k++, j++) {
+			int x = x_end;
+			cv::Rect roi(x, y, resizeWidth[k], resizeHeight);
+			cv::Size s = canvasImage(roi).size();
+			// change the number of channels to three
+			cv::Mat target_ROI(s, CV_8UC3);
+			if (vecMat[k]->channels() != canvasImage.channels()) {
+				if (vecMat[k]->channels() == 1) {
+					cv::cvtColor(*vecMat[k], target_ROI, CV_GRAY2BGR);
+				}
+			}
+			else {
+				vecMat[k]->copyTo(target_ROI);
+			}
+			cv::resize(target_ROI, target_ROI, s);
+			if (target_ROI.type() != canvasImage.type()) {
+				target_ROI.convertTo(target_ROI, canvasImage.type());
+			}
+			target_ROI.copyTo(canvasImage(roi));
+			x_end += resizeWidth[k] + edgeThickness;
+		}
+	}
+	return canvasImage;
+}

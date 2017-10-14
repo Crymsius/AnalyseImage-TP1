@@ -1,5 +1,9 @@
 ﻿#include "Kernel.h"
 
+Kernel::Kernel()
+{
+}
+
 Kernel::Kernel(const std::vector<std::vector<int>>& mat)
 	: mKernel(mat.size(), mat[0].size(), CV_32SC1)
 {

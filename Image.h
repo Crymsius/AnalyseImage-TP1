@@ -37,9 +37,18 @@ public:
 	bool readFromFile(const char* path);
 
 	Image convolution(const Kernel& k) const;
+	Image toGray() const;
 
 	static std::pair<Image, Image> bidirectionalGradient(const Image& i1, const Image& i2);
+	static std::pair<Image, Image> multidirectionalDirection(const Image& distance, const Image& gray0, const Image& gray1,
+	                                                         const Image& gray2, const Image& gray3);
+	static Image max(const Image& i0, const Image& i1);
+	
 	const cv::Mat& _Mat() const;
+
+	const float& operator()(unsigned i, unsigned j) const;
+
+	void show(const char* name) const;
 
 	unsigned width() const;
 	unsigned height() const;
