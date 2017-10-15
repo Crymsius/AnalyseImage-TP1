@@ -38,10 +38,13 @@ public:
 
 	Image convolution(const Kernel& k) const;
 	Image toGray() const;
+    void convertToFloat ();
 
 	static std::pair<Image, Image> bidirectionalGradient(const Image& i1, const Image& i2);
 	static std::pair<Image, Image> multidirectionalDirection(const Image& distance, const Image& gray0, const Image& gray1,
 	                                                         const Image& gray2, const Image& gray3);
+    
+    static Image thresholding(const Image& source, const float& threshold);
 	static Image max(const Image& i0, const Image& i1);
 	
 	const cv::Mat& _Mat() const;

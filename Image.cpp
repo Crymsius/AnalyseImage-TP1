@@ -4,8 +4,11 @@
 #include "Kernel.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <cstdarg>
-#include <corecrt_math_defines.h>
 #include <opencv2/highgui/highgui.hpp>
+
+#ifdef WIN32
+#include <corecrt_math_defines.h>
+#endif
 
 Image::Image()
 {
@@ -70,6 +73,10 @@ Image Image::toGray() const
 	
 }
 
+void Image::convertToFloat () {
+    this->mImage.convertTo(this->mImage, CV_32F);
+}
+
 template< typename T>
 static double mean(std::initializer_list<T> list)
 {
@@ -83,8 +90,8 @@ std::pair<Image, Image> Image::bidirectionalGradient(const Image& i1, const Imag
 {
 	auto gradient = std::make_pair(Image(i1.height(), i1.width()), Image(i2.height(), i2.width()));
 
-	for (auto j = 0; j < i1._Mat().size().width; ++j) {
-		for (auto i = 0; i < i1._Mat().size().height; ++i) {
+    for (auto i = 0; i < i1._Mat().size().height; ++i) {
+        for (auto j = 0; j < i1._Mat().size().width; ++j) {
 			gradient.first.mImage.at<float>(i, j) = sqrt(std::pow(mean({ i1._Mat().at<cv::Vec3b>(i, j)[0],
 				i1._Mat().at<cv::Vec3b>(i, j)[1],
 				i1._Mat().at<cv::Vec3b>(i, j)[2] }
@@ -119,19 +126,19 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 
 	for (auto i = 0; i < distance.height(); ++i) {
 		for (auto j = 0; j < distance.width(); ++j) {
-			if (distance.mImage.at<uchar>(i, j) == 0) {
+			if (distance.mImage.at<float>(i, j) == 0) {
 				result.mImage.at<float>(i, j) = 0;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray0.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray0.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 0;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(200, 0, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray1.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray1.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 1 * (M_PI_4);
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 200, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray2.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray2.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 2 * (M_PI_4);
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 200);
 			}
@@ -143,6 +150,21 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 	}
 
 	return std::move(std::make_pair(result, direction_color));
+}
+
+Image Image::thresholding(const Image& source, const float& threshold) {
+    Image result(source.height(), source.width());
+    
+    for (int i=0; i < source.height(); ++i) {
+        for (int j=0; j < source.width(); ++j) {
+            if (source.mImage.at<float>(i,j) < threshold * 255) {
+                result.mImage.at<float>(i,j) = 0;
+            } else {
+                result.mImage.at<float>(i,j) = 255;
+            }
+        }
+    }
+    return result;
 }
 
 Image Image::max(const Image& i0, const Image& i1)
