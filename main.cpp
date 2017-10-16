@@ -189,9 +189,12 @@ int main(int argc, const char * argv[]) {
     cv::Scalar meanMulti, stddevMulti;
     cv::meanStdDev(distMulti._Mat(), meanMulti, stddevMulti, cv::Mat());
     cv::Scalar globalThreshold = meanMulti + 1.5 * stddevMulti;
-    Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]/255);
-    Image seuilHaut = Image(new_height, new_width);
-    Image seuilHyst = Image(new_height, new_width);
+    cv::Scalar highThreshold = meanMulti + 1.5 * stddevMulti;
+    cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
+    
+    Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]);
+    Image HystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
+    Image HystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
 	
     seuil = 0.09f;
     seuil_hyst = 0.02f;
@@ -237,7 +240,9 @@ int main(int argc, const char * argv[]) {
 		&dirColorMulti._Mat(),
 		&gradient.first._Mat(),
 		&gradient.second._Mat(),
-        &globalThresholdingMulti._Mat(),
+//        &globalThresholdingMulti._Mat(),
+        &HystHighThresholdingMulti._Mat(),
+        &HystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
 		&destinationDirection._Mat()*/
 

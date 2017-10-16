@@ -6,7 +6,7 @@
 #include <cstdarg>
 #include <opencv2/highgui/highgui.hpp>
 
-#ifdef WIN32
+#if defined(_WIN32) || defined(WIN32)
 #include <corecrt_math_defines.h>
 #endif
 
@@ -32,8 +32,8 @@ bool Image::readFromFile(const char* path)
 int conv(const cv::Mat& image, const cv::Mat& kernel, const int i, const int j, const int color) {
 	// Problème sur les bords de l'image
 	auto temp = 0;
-	for (auto u = 0; u <= 2; u++) {
-		for (auto v = 0; v <=2; v++) {
+	for (auto u = 0; u < kernel.size().width; u++) {
+		for (auto v = 0; v < kernel.size().height; v++) {
 			temp = temp + (kernel.at<int>(u, v) * image.at<cv::Vec3b>(i + (u - 1), j + (v - 1))[color]);
 		}
 	}
@@ -157,13 +157,47 @@ Image Image::thresholding(const Image& source, const float& threshold) {
     
     for (int i=0; i < source.height(); ++i) {
         for (int j=0; j < source.width(); ++j) {
-            if (source.mImage.at<float>(i,j) < threshold * 255) {
+            if (source.mImage.at<float>(i,j) < threshold) {
                 result.mImage.at<float>(i,j) = 0;
             } else {
                 result.mImage.at<float>(i,j) = 255;
             }
         }
     }
+    return result;
+}
+
+Image Image::thresholdingLow(const Image& source, const float& threshold) {
+    Image result(source.height(), source.width());
+    
+    int count;
+    for (int i=0; i < source.height(); ++i) {
+        for (int j=0; j < source.width(); ++j) {
+            if (source.mImage.at<float>(i,j) < threshold)
+                result.mImage.at<float>(i,j) = 0;
+            else {
+                count = 0;
+                for (int k = -1; k < 2; ++k) {
+                    for (int l = -1; l < 2; ++l) {
+                        if (this->mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
+                            count++;
+                    }
+                }
+                if (count != 0)
+                    result.mImage.at<float>(i,j) = 255;
+                else
+                    result.mImage.at<float>(i,j) = 0;
+            }
+        }
+    }
+    return result;
+}
+
+Image Image::thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow) {
+    Image result(source.height(), source.width());
+    result.thresholding(source, thresholdHigh);
+    result.thresholdingLow(source, thresholdLow);
+    
     return result;
 }
 
