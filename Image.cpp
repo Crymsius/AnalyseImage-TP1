@@ -164,10 +164,10 @@ Image Image::thresholding(const Image& source, const float& threshold) {
             }
         }
     }
-    return result;
+    return std::move(result);
 }
 
-Image Image::thresholdingLow(const Image& source, const float& threshold) {
+Image Image::thresholdingLow(const Image& source, const Image& temp, const float& threshold) {
     Image result(source.height(), source.width());
     
     int count;
@@ -179,24 +179,22 @@ Image Image::thresholdingLow(const Image& source, const float& threshold) {
                 count = 0;
                 for (int k = -1; k < 2; ++k) {
                     for (int l = -1; l < 2; ++l) {
-                        if (this->mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
+                        if (temp.mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
                             count++;
                     }
                 }
-                if (count != 0)
+                if (count >= 0)
                     result.mImage.at<float>(i,j) = 255;
-                else
-                    result.mImage.at<float>(i,j) = 0;
             }
         }
     }
-    return result;
+    return std::move(result);
 }
 
 Image Image::thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow) {
     Image result(source.height(), source.width());
     result.thresholding(source, thresholdHigh);
-    result.thresholdingLow(source, thresholdLow);
+    result = thresholdingLow(source, result, thresholdLow);
     
     return result;
 }

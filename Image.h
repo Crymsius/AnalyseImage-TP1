@@ -46,6 +46,7 @@ public:
     
     static Image thresholding(const Image& source, const float& threshold);
     static Image thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow);
+    static Image thresholdingLow(const Image& source, const Image& temp, const float& threshold);
 
     static Image max(const Image& i0, const Image& i1);
 	
@@ -58,6 +59,5 @@ public:
 	unsigned width() const;
 	unsigned height() const;
 private:
-    Image thresholdingLow(const Image& source, const float& threshold);
 	cv::Mat mImage;
 };
