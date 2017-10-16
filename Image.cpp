@@ -199,6 +199,42 @@ Image Image::thresholdingHysteresis(const Image& source, const float& thresholdH
     return result;
 }
 
+Image Image::thinningMulti(const Image& source, const Image& grad, const Image& dir) {
+    Image result(source.height(), source.width());
+
+    for (int i=1; i < grad.height() -1; ++i) {
+        for (int j=1; j < grad.width() -1; ++j) {
+            if (source.mImage.at<float>(i,j) == 255) {
+                double angle = dir.mImage.at<float>(i,j) + M_PI;
+                if (fmod(angle, M_PI) == 0) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if ( fmod(angle, M_PI) == M_PI_4) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if (fmod(angle, M_PI) == M_PI_2) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if ( fmod(angle, M_PI) == 3 * (M_PI_4)) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                }
+            } else {
+                result.mImage.at<float>(i,j) = 0;
+            }
+        }
+    }
+    return result;
+}
+
 Image Image::max(const Image& i0, const Image& i1)
 {
 	Image result;

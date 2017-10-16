@@ -193,9 +193,11 @@ int main(int argc, const char * argv[]) {
     cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
     
     Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]);
-    Image HystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
-    Image HystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
+    Image hystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
+    Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
 	
+    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti);
+    
     seuil = 0.09f;
     seuil_hyst = 0.02f;
     
@@ -241,13 +243,14 @@ int main(int argc, const char * argv[]) {
 		&gradient.first._Mat(),
 		&gradient.second._Mat(),
 //        &globalThresholdingMulti._Mat(),
-        &HystHighThresholdingMulti._Mat(),
-        &HystFinalThresholdingMulti._Mat(),
+        &hystHighThresholdingMulti._Mat(),
+        &hystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
 		&destinationDirection._Mat()*/
 
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
+    thinMulti.show("coucou");
     cv::waitKey(0);
     
     return 0;
