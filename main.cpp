@@ -256,7 +256,7 @@ int main(int argc, const char * argv[]) {
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
     thinMulti.show("coucou");
-	closure.show("closure");*/
+	//closure.show("closure");
     cv::waitKey(0);
     
     return 0;
