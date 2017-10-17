@@ -5,6 +5,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <cstdarg>
 #include <opencv2/highgui/highgui.hpp>
+#include <queue>
+#include <list>
 
 #if defined(_WIN32) || defined(WIN32)
 #include <corecrt_math_defines.h>
@@ -171,8 +173,8 @@ Image Image::thresholdingLow(const Image& source, const Image& temp, const float
     Image result(source.height(), source.width());
     
     int count;
-    for (int i=0; i < source.height(); ++i) {
-        for (int j=0; j < source.width(); ++j) {
+    for (int i=1; i < source.height() - 1; ++i) {
+        for (int j=1; j < source.width() - 1; ++j) {
             if (source.mImage.at<float>(i,j) < threshold)
                 result.mImage.at<float>(i,j) = 0;
             else {
@@ -240,6 +242,555 @@ Image Image::max(const Image& i0, const Image& i1)
 	Image result;
 	result.mImage = cv::max(i0.mImage, i1.mImage);
 	return result;
+}
+
+
+Image Image::closure(const Image& contours, const Image& direction)
+{
+
+	const float seuil = 2.35f;
+	Image result = contours;
+	std::queue < std::tuple<unsigned, unsigned, unsigned , unsigned>> closure_candidates; // i, j, position du point précédent (pour éviter de boucler)
+
+
+	// gérer en dehors les contours de l'image
+	for (auto i = 2; i < contours.height() - 2; ++i)
+	{
+		for (auto j = 2; j < contours.width() - 2; ++j)
+		{
+			if (contours.mImage.at<float>(i, j) == 255.0f)
+			{
+				// top
+				if (contours.mImage.at<float>(i, j - 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i, j - 1);
+					const double sum1 = s + direction.mImage.at<float>(i - 1, j - 2); // top top left
+					const double sum2 = s + direction.mImage.at<float>(i, j - 2); // top top
+					const double sum3 = s + direction.mImage.at<float>(i + 1, j - 2); // top top right
+					
+					if (sum1 > sum2) 
+					{
+						if (sum1 > sum3) 
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j - 2, i, j - 1));
+						}
+						else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i, j - 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i, j - 2, i, j - 1));
+						}
+						else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i, j - 1));
+					}
+				}
+
+				// top right
+				if (contours.mImage.at<float>(i + 1, j - 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i + 1, j - 1);
+					const double sum1 = s + direction.mImage.at<float>(i + 1, j - 2); // top right top
+					const double sum2 = s + direction.mImage.at<float>(i + 1, j - 2); // top right top right
+					const double sum3 = s + direction.mImage.at<float>(i + 2, j - 1); // top right right
+
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i + 1, j - 1));
+						}
+						else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j - 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i + 1, j - 1));
+						}
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j - 1));
+					}
+				}
+
+				// right
+				if (contours.mImage.at<float>(i + 1, j) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i + 1, j);
+					const double sum1 = s + direction.mImage.at<float>(i + 2, j - 1); // right top right
+					const double sum2 = s + direction.mImage.at<float>(i + 2, j); // right right
+					const double sum3 = s + direction.mImage.at<float>(i + 2, j + 1); // right bottom right
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j));
+						}
+						else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j));
+					}
+					else if (sum2 > sum3)
+					{
+						if (sum2 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j, i + 1, j));
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j));
+					}
+				}
+
+				// bottom right
+				if (contours.mImage.at<float>(i + 1, j + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i + 1, j + 1);
+					const double sum1 = s + direction.mImage.at<float>(i + 2, j + 1); // bottom right right
+					const double sum2 = s + direction.mImage.at<float>(i + 2, j + 2); // bottom right bottom right
+					const double sum3 = s + direction.mImage.at<float>(i + 1, j + 2); // bottom right bottom
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i + 1, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j + 2, i + 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i + 1, j + 1));
+					}
+				}
+
+				// bottom
+				if (contours.mImage.at<float>(i, j + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i, j + 1);
+					const double sum1 = s + direction.mImage.at<float>(i + 1, j + 2); // bottom bottom right
+					const double sum2 = s + direction.mImage.at<float>(i, j + 2); // bottom bottom
+					const double sum3 = s + direction.mImage.at<float>(i - 1, j + 2); // bottom bottom left
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i, j + 2, i, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i, j + 1));
+					}
+				}
+
+				// bottom left
+				if (contours.mImage.at<float>(i - 1, j + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i - 1, j + 1);
+					const double sum1 = s + direction.mImage.at<float>(i - 1, j + 2); // bottom left bottom
+					const double sum2 = s + direction.mImage.at<float>(i - 2, j + 2); // bottom left bottom left
+					const double sum3 = s + direction.mImage.at<float>(i - 2, j + 1); // bottom left left
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i - 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 2, i - 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j + 1));
+					}
+				}
+
+				// left
+				if (contours.mImage.at<float>(i - 1, j) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i - 1, j);
+					const double sum1 = s + direction.mImage.at<float>(i - 2, j + 1); // left bottom left
+					const double sum2 = s + direction.mImage.at<float>(i - 2, j); // left left
+					const double sum3 = s + direction.mImage.at<float>(i - 2, j - 1); // left top left 
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j, i - 1, j));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j));
+					}
+				}
+
+				// top left
+				if (contours.mImage.at<float>(i - 1, j - 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(i, j) + direction.mImage.at<float>(i - 1, j - 1);
+					const double sum1 = s + direction.mImage.at<float>(i - 2, j - 1); // top left left
+					const double sum2 = s + direction.mImage.at<float>(i - 2, j - 2); // top left top left
+					const double sum3 = s + direction.mImage.at<float>(i - 1, j - 2); // top left top 
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j - 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j - 2, i - 1, j - 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 2, i - 1, j - 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j - 2, i - 1, j - 1));
+					}
+				}
+			}
+
+			std::vector<std::tuple<unsigned, unsigned>> already_candidates;
+			already_candidates.reserve(100);
+
+			while(!closure_candidates.empty())
+			{
+				auto tuple = closure_candidates.front();
+				result.mImage.at<float>(std::get<0>(tuple), std::get<1>(tuple)) = 255.0f;
+				closure_candidates.pop();
+
+				if (std::find(already_candidates.begin(), already_candidates.end(), std::make_tuple(std::get<0>(tuple), std::get<1>(tuple))) != already_candidates.end())
+				{
+					continue;
+				}
+
+				already_candidates.push_back(std::make_tuple(std::get<0>(tuple), std::get<1>(tuple)));
+				auto k = std::get<0>(tuple);
+				auto l = std::get<1>(tuple);
+
+				auto t = std::make_tuple(k + k - std::get<2>(tuple), l + l - std::get<3>(tuple));
+
+				if (std::get<0>(t) < result.height() && std::get<1>(t) < result.width() && result.mImage.at<float>(std::get<0>(t), std::get<1>(t)) == 0)
+				{
+
+					const float sum = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(std::get<0>(t), std::get<1>(t));
+
+					if (sum > seuil)
+						closure_candidates.push(std::make_tuple(std::get<0>(t), std::get<1>(t), std::get<0>(tuple), std::get<1>(tuple)));
+				}
+/*
+				// top
+				if (!( k <= 0 || k >= contours.height() - 1 || l - 1 <= 0 || l - 1 >= contours.width() - 1))
+					if(std::get<2>(tuple) != k && std::get<3>(tuple) != l - 1)
+						if (contours.mImage.at<float>(k, l - 1) == 255.0f)
+					{
+						const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k, l - 1);
+						const double sum1 = s + direction.mImage.at<float>(k - 1, l - 2); // top top left
+						const double sum2 = s + direction.mImage.at<float>(k, l - 2); // top top
+						const double sum3 = s + direction.mImage.at<float>(k + 1, l - 2); // top top right
+
+						if (sum1 > sum2)
+						{
+							if (sum1 > sum3)
+							{
+								if (sum1 > seuil)
+									closure_candidates.push(std::make_tuple(i - 1, j - 2, i, j - 1));
+							}
+							else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i, j - 1));
+						}
+						else
+						{
+							if (sum2 > sum3)
+							{
+								if (sum2 > seuil)
+									closure_candidates.push(std::make_tuple(i, j - 2, i, j - 1));
+							}
+							else if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i, j - 1));
+						}
+					}
+
+				// top right
+				if (!(k + 1 <= 0 || k + 1 >= contours.height() - 1 || l - 1 <= 0 || l - 1 >= contours.width() - 1))
+					if (std::get<2>(tuple) != k + 1 && std::get<3>(tuple) != l - 1)
+						if (contours.mImage.at<float>(k + 1, l - 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k + 1, l - 1);
+					const double sum1 = s + direction.mImage.at<float>(k + 1, l - 2); // top right top
+					const double sum2 = s + direction.mImage.at<float>(k + 1, l - 2); // top right top right
+					const double sum3 = s + direction.mImage.at<float>(k + 2, l - 1); // top right right
+
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i + 1, j - 1));
+						}
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j - 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j - 2, i + 1, j - 1));
+						}
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j - 1));
+					}
+				}
+
+				// right
+				if (!(k + 1 <= 0 || k + 1 >= contours.height() - 1 || l <= 0 || l >= contours.width() - 1))
+					if (std::get<2>(tuple) != k + 1 && std::get<3>(tuple) != l)
+						if (contours.mImage.at<float>(k + 1, l) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k + 1, l);
+					const double sum1 = s + direction.mImage.at<float>(k + 2, l - 1); // right top right
+					const double sum2 = s + direction.mImage.at<float>(k + 2, l); // right right
+					const double sum3 = s + direction.mImage.at<float>(k + 2, l + 1); // right bottom right
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j - 1, i + 1, j));
+						}
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j));
+					}
+					else if (sum2 > sum3)
+					{
+						if (sum2 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j, i + 1, j));
+						else if (sum3 > seuil)
+							closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j));
+					}
+				}
+
+				// bottom right
+				if (!(k + 1 <= 0 || k + 1 >= contours.height() - 1 || l + 1 <= 0 || l + 1>= contours.width() - 1))
+					if (std::get<2>(tuple) != k + 1 && std::get<3>(tuple) != l + 1)
+						if (contours.mImage.at<float>(k + 1, l + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k + 1, l + 1);
+					const double sum1 = s + direction.mImage.at<float>(k + 2, l + 1); // bottom right right
+					const double sum2 = s + direction.mImage.at<float>(k + 2, l + 2); // bottom right bottom right
+					const double sum3 = s + direction.mImage.at<float>(k + 1, l + 2); // bottom right bottom
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j + 1, i + 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i + 1, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i + 2, j + 2, i + 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i + 1, j + 1));
+					}
+				}
+
+				// bottom
+				if (!(k <= 0 || k >= contours.height() - 1 || l + 1 <= 0 || l + 1 >= contours.width() - 1))
+					if (std::get<2>(tuple) != k && std::get<3>(tuple) != l + 1)
+						if (contours.mImage.at<float>(k, l + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k, l + 1);
+					const double sum1 = s + direction.mImage.at<float>(k + 1, l + 2); // bottom bottom right
+					const double sum2 = s + direction.mImage.at<float>(k, l + 2); // bottom bottom
+					const double sum3 = s + direction.mImage.at<float>(k - 1, l + 2); // bottom bottom left
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i + 1, j + 2, i, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i, j + 2, i, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i, j + 1));
+					}
+				}
+
+				// bottom left
+				if (!(k - 1 <= 0 || k - 1 >= contours.height() - 1 || l + 1 <= 0 || l + 1 >= contours.width() - 1))
+					if (std::get<2>(tuple) != k - 1 && std::get<3>(tuple) != l + 1)
+						if (contours.mImage.at<float>(k - 1, l + 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k - 1, l + 1);
+					const double sum1 = s + direction.mImage.at<float>(k - 1, l + 2); // bottom left bottom
+					const double sum2 = s + direction.mImage.at<float>(k - 2, l + 2); // bottom left bottom left
+					const double sum3 = s + direction.mImage.at<float>(k - 2, l + 1); // bottom left left
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j + 2, i - 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j + 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 2, i - 1, j + 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j + 1));
+					}
+				}
+
+				// left
+				if (!(k - 1 <= 0 || k - 1 >= contours.height() - 1 || l <= 0 || l >= contours.width() - 1))
+					if (std::get<2>(tuple) != k - 1 && std::get<3>(tuple) != l)
+						if (contours.mImage.at<float>(k - 1, l) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k - 1, l);
+					const double sum1 = s + direction.mImage.at<float>(k - 2, l + 1); // left bottom left
+					const double sum2 = s + direction.mImage.at<float>(k - 2, l); // left left
+					const double sum3 = s + direction.mImage.at<float>(k - 2, l - 1); // left top left 
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j + 1, i - 1, j));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j, i - 1, j));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j));
+					}
+				}
+
+				// top left
+				if (!(k - 1 <= 0 || k - 1 >= contours.height() - 1 || l - 1 <= 0 || l - 1>= contours.width() - 1))
+					if (std::get<2>(tuple) != k - 1 && std::get<3>(tuple) != l - 1)
+						if (contours.mImage.at<float>(k - 1, l - 1) == 255.0f)
+				{
+					const float s = direction.mImage.at<float>(k, l) + direction.mImage.at<float>(k - 1, l - 1);
+					const double sum1 = s + direction.mImage.at<float>(k - 2, l - 1); // top left left
+					const double sum2 = s + direction.mImage.at<float>(k - 2, l - 2); // top left top left
+					const double sum3 = s + direction.mImage.at<float>(k - 1, l - 2); // top left top 
+					if (sum1 > sum2)
+					{
+						if (sum1 > sum3)
+						{
+							if (sum1 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 1, i - 1, j - 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j - 2, i - 1, j - 1));
+					}
+					else
+					{
+						if (sum2 > sum3)
+						{
+							if (sum2 > seuil)
+								closure_candidates.push(std::make_tuple(i - 2, j - 2, i - 1, j - 1));
+						}
+						else
+							if (sum3 > seuil)
+								closure_candidates.push(std::make_tuple(i - 1, j - 2, i - 1, j - 1));
+					}
+				}*/
+			}
+		}
+	}
+	return std::move(result);
 }
 
 const cv::Mat& Image::_Mat() const

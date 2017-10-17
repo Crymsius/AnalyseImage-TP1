@@ -3,3 +3,8 @@
 ################################################################################
 
 /.vs/AnalyseImage_TP1/v15
+/Debug
+/x64
+/AnalyseImage_TP1.vcxproj.filters
+/AnalyseImage_TP1.vcxproj
+/AnalyseImage_TP1.sln

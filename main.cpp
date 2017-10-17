@@ -184,7 +184,7 @@ int main(int argc, const char * argv[]) {
 	auto dir_color = Image::multidirectionalDirection(distMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
 	Image dirMulti = std::move(dir_color.first);
 	Image dirColorMulti = std::move(dir_color.second);
-    
+
     //thresholding
     cv::Scalar meanMulti, stddevMulti;
     cv::meanStdDev(distMulti._Mat(), meanMulti, stddevMulti, cv::Mat());
@@ -197,7 +197,9 @@ int main(int argc, const char * argv[]) {
     Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
 	
     Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti);
-    
+
+	hystFinalThresholdingMulti.show("not closed");
+	Image closure = Image::closure(thinMulti, dirMulti);
     seuil = 0.09f;
     seuil_hyst = 0.02f;
     
@@ -251,6 +253,7 @@ int main(int argc, const char * argv[]) {
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
     thinMulti.show("coucou");
+	closure.show("closure");
     cv::waitKey(0);
     
     return 0;
