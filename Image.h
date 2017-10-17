@@ -52,6 +52,8 @@ public:
     
     static Image max(const Image& i0, const Image& i1);
 	
+	static Image closure(const Image& contours, const Image& direction);
+
 	const cv::Mat& _Mat() const;
 
 	const float& operator()(unsigned i, unsigned j) const;
@@ -62,4 +64,15 @@ public:
 	unsigned height() const;
 private:
 	cv::Mat mImage;
+	enum class Direction
+	{
+		Left,
+		TopLeft,
+		Top,
+		TopRight,
+		Right,
+		BottomRight,
+		Bottom,
+		BottomLeft
+	};
 };
