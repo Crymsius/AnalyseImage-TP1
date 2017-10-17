@@ -177,6 +177,7 @@ Image Image::thresholdingLow(const Image& source, const Image& temp, const float
                 count = 0;
                 for (int k = -1; k < 2; ++k) {
                     for (int l = -1; l < 2; ++l) {
+                        //et le superieur ?
                         if (temp.mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
                             count++;
                     }
@@ -205,22 +206,26 @@ Image Image::thinningMulti(const Image& source, const Image& grad, const Image& 
             if (source.mImage.at<float>(i,j) == 255) {
                 double angle = dir.mImage.at<float>(i,j) + M_PI;
                 if (fmod(angle, M_PI) == 0) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j+1))
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j-1) &&
+                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j+1))
                         result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 } else if ( fmod(angle, M_PI) == M_PI_4) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j+1))
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j-1) &&
+                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j+1))
                         result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 } else if (fmod(angle, M_PI) == M_PI_2) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j))
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j) &&
+                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j))
                         result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 } else if ( fmod(angle, M_PI) == 3 * (M_PI_4)) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j+1))
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j-1) &&
+                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j+1))
                         result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;

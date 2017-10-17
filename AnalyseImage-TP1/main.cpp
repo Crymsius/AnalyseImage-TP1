@@ -237,8 +237,8 @@ int main(int argc, const char * argv[]) {
     multi2 = (cv::Mat_<int>(3,3) << 5, 5, 5, -3, 0, -3, -3, -3, -3);
     multi3 = (cv::Mat_<int>(3,3) << 5, 5, -3, 5, 0, -3, -3, -3, -3);
     
-//    image = cv::imread("data/Lenna.png");
-    image = cv::imread("data/1.png");
+    image = cv::imread("data/Lenna.png");
+//    image = cv::imread("data/1.png");
     destinationX = cv::Mat(image.size().height-2,image.size().width-2,image.type());
     destinationY = cv::Mat(image.size().height-2,image.size().width-2,image.type());
     
