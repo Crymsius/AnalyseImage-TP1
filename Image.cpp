@@ -65,18 +65,14 @@ Image Image::convolution(const Kernel& kernel) const
 
 Image Image::toGray() const
 {
-	cv::Mat gray_mat;
-	cvtColor(this->mImage, gray_mat, cv::COLOR_RGB2GRAY);
-
 	Image gray_img;
-	gray_img.mImage = gray_mat;
-
+	cvtColor(this->mImage, gray_img.mImage, cv::COLOR_RGB2GRAY);
 	return std::move(gray_img);
-	
 }
 
 void Image::convertToFloat () {
-    this->mImage.convertTo(this->mImage, CV_32F);
+
+	mImage.clone().convertTo(mImage, CV_32F);
 }
 
 template< typename T>
