@@ -1,1 +1,5 @@
-*.xcodeproj/
+﻿################################################################################
+# Ce fichier .gitignore a été automatiquement créé par Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/AnalyseImage_TP1/v15
