@@ -4,8 +4,11 @@
 #include "Kernel.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <cstdarg>
-#include <corecrt_math_defines.h>
 #include <opencv2/highgui/highgui.hpp>
+
+#if defined(_WIN32) || defined(WIN32)
+#include <corecrt_math_defines.h>
+#endif
 
 Image::Image()
 {
@@ -29,8 +32,8 @@ bool Image::readFromFile(const char* path)
 int conv(const cv::Mat& image, const cv::Mat& kernel, const int i, const int j, const int color) {
 	// Problème sur les bords de l'image
 	auto temp = 0;
-	for (auto u = 0; u <= 2; u++) {
-		for (auto v = 0; v <=2; v++) {
+	for (auto u = 0; u < kernel.size().width; u++) {
+		for (auto v = 0; v < kernel.size().height; v++) {
 			temp = temp + (kernel.at<int>(u, v) * image.at<cv::Vec3b>(i + (u - 1), j + (v - 1))[color]);
 		}
 	}
@@ -70,6 +73,10 @@ Image Image::toGray() const
 	
 }
 
+void Image::convertToFloat () {
+    this->mImage.convertTo(this->mImage, CV_32F);
+}
+
 template< typename T>
 static double mean(std::initializer_list<T> list)
 {
@@ -83,8 +90,8 @@ std::pair<Image, Image> Image::bidirectionalGradient(const Image& i1, const Imag
 {
 	auto gradient = std::make_pair(Image(i1.height(), i1.width()), Image(i2.height(), i2.width()));
 
-	for (auto j = 0; j < i1._Mat().size().width; ++j) {
-		for (auto i = 0; i < i1._Mat().size().height; ++i) {
+    for (auto i = 0; i < i1._Mat().size().height; ++i) {
+        for (auto j = 0; j < i1._Mat().size().width; ++j) {
 			gradient.first.mImage.at<float>(i, j) = sqrt(std::pow(mean({ i1._Mat().at<cv::Vec3b>(i, j)[0],
 				i1._Mat().at<cv::Vec3b>(i, j)[1],
 				i1._Mat().at<cv::Vec3b>(i, j)[2] }
@@ -119,19 +126,19 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 
 	for (auto i = 0; i < distance.height(); ++i) {
 		for (auto j = 0; j < distance.width(); ++j) {
-			if (distance.mImage.at<uchar>(i, j) == 0) {
+			if (distance.mImage.at<float>(i, j) == 0) {
 				result.mImage.at<float>(i, j) = 0;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray0.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray0.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 0;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(200, 0, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray1.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray1.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 1 * (M_PI_4);
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 200, 0);
 			}
-			else if (distance.mImage.at<uchar>(i, j) == gray2.mImage.at<uchar>(i, j)) {
+			else if (distance.mImage.at<float>(i, j) == gray2.mImage.at<uchar>(i, j)) {
 				result.mImage.at<float>(i, j) = 2 * (M_PI_4);
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 200);
 			}
@@ -143,6 +150,89 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 	}
 
 	return std::move(std::make_pair(result, direction_color));
+}
+
+Image Image::thresholding(const Image& source, const float& threshold) {
+    Image result(source.height(), source.width());
+    
+    for (int i=0; i < source.height(); ++i) {
+        for (int j=0; j < source.width(); ++j) {
+            if (source.mImage.at<float>(i,j) < threshold) {
+                result.mImage.at<float>(i,j) = 0;
+            } else {
+                result.mImage.at<float>(i,j) = 255;
+            }
+        }
+    }
+    return std::move(result);
+}
+
+Image Image::thresholdingLow(const Image& source, const Image& temp, const float& threshold) {
+    Image result(source.height(), source.width());
+    
+    int count;
+    for (int i=0; i < source.height(); ++i) {
+        for (int j=0; j < source.width(); ++j) {
+            if (source.mImage.at<float>(i,j) < threshold)
+                result.mImage.at<float>(i,j) = 0;
+            else {
+                count = 0;
+                for (int k = -1; k < 2; ++k) {
+                    for (int l = -1; l < 2; ++l) {
+                        if (temp.mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
+                            count++;
+                    }
+                }
+                if (count >= 0)
+                    result.mImage.at<float>(i,j) = 255;
+            }
+        }
+    }
+    return std::move(result);
+}
+
+Image Image::thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow) {
+    Image result(source.height(), source.width());
+    result.thresholding(source, thresholdHigh);
+    result = thresholdingLow(source, result, thresholdLow);
+    
+    return result;
+}
+
+Image Image::thinningMulti(const Image& source, const Image& grad, const Image& dir) {
+    Image result(source.height(), source.width());
+
+    for (int i=1; i < grad.height() -1; ++i) {
+        for (int j=1; j < grad.width() -1; ++j) {
+            if (source.mImage.at<float>(i,j) == 255) {
+                double angle = dir.mImage.at<float>(i,j) + M_PI;
+                if (fmod(angle, M_PI) == 0) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if ( fmod(angle, M_PI) == M_PI_4) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if (fmod(angle, M_PI) == M_PI_2) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                } else if ( fmod(angle, M_PI) == 3 * (M_PI_4)) {
+                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j-1) && grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j+1))
+                        result.mImage.at<float>(i,j) = 255;
+                    else
+                        result.mImage.at<float>(i,j) = 0;
+                }
+            } else {
+                result.mImage.at<float>(i,j) = 0;
+            }
+        }
+    }
+    return result;
 }
 
 Image Image::max(const Image& i0, const Image& i1)

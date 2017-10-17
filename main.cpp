@@ -32,6 +32,8 @@ const int seuil_hyst_slider_max = 100;
 int seuil_hyst_slider = 10;
 float seuil_hyst;
 cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows);
+
+
 void seuillage (cv::Mat& source, cv::Mat& destination, float& threshold) {
     for (int j=0; j < source.size().width; ++j) {
         for (int i=0; i < source.size().height; ++i) {
@@ -158,10 +160,6 @@ int main(int argc, const char * argv[]) {
 	const unsigned new_height = image.height() - 2;
 	const unsigned new_width = image.width() - 2;
 
-	Image destinationNormeSeuil = Image(new_height, new_width);
-    Image seuilHaut = Image(new_height, new_width);
-    Image seuilHyst = Image(new_height, new_width);
-
 	// bidirectionnal
     Image destinationX = image.convolution(bidirectionnal_kernels[0]);
     Image destinationY = image.convolution(bidirectionnal_kernels[1]);
@@ -181,12 +179,25 @@ int main(int argc, const char * argv[]) {
 	Image distMulti = Image::max(destMulti0.toGray(), destMulti1.toGray());
     distMulti = Image::max(distMulti, destMulti2.toGray());
     distMulti = Image::max(distMulti, destMulti3.toGray());
+    distMulti.convertToFloat();
     
 	auto dir_color = Image::multidirectionalDirection(distMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
 	Image dirMulti = std::move(dir_color.first);
 	Image dirColorMulti = std::move(dir_color.second);
     
+    //thresholding
+    cv::Scalar meanMulti, stddevMulti;
+    cv::meanStdDev(distMulti._Mat(), meanMulti, stddevMulti, cv::Mat());
+    cv::Scalar globalThreshold = meanMulti + 1.5 * stddevMulti;
+    cv::Scalar highThreshold = meanMulti + 1.5 * stddevMulti;
+    cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
+    
+    Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]);
+    Image hystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
+    Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
 	
+    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti);
+    
     seuil = 0.09f;
     seuil_hyst = 0.02f;
     
@@ -231,11 +242,15 @@ int main(int argc, const char * argv[]) {
 		&dirColorMulti._Mat(),
 		&gradient.first._Mat(),
 		&gradient.second._Mat(),
+//        &globalThresholdingMulti._Mat(),
+        &hystHighThresholdingMulti._Mat(),
+        &hystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
 		&destinationDirection._Mat()*/
 
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
+    thinMulti.show("coucou");
     cv::waitKey(0);
     
     return 0;

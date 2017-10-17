@@ -38,11 +38,19 @@ public:
 
 	Image convolution(const Kernel& k) const;
 	Image toGray() const;
+    void convertToFloat ();
 
 	static std::pair<Image, Image> bidirectionalGradient(const Image& i1, const Image& i2);
 	static std::pair<Image, Image> multidirectionalDirection(const Image& distance, const Image& gray0, const Image& gray1,
 	                                                         const Image& gray2, const Image& gray3);
-	static Image max(const Image& i0, const Image& i1);
+    
+    static Image thresholding(const Image& source, const float& threshold);
+    static Image thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow);
+    static Image thresholdingLow(const Image& source, const Image& temp, const float& threshold);
+    
+    static Image thinningMulti(const Image& source, const Image& grad, const Image& dir);
+    
+    static Image max(const Image& i0, const Image& i1);
 	
 	const cv::Mat& _Mat() const;
 
