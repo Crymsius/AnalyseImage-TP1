@@ -180,12 +180,11 @@ int main(int argc, const char * argv[]) {
     distMulti = Image::max(distMulti, destMulti2.toGray());
     distMulti = Image::max(distMulti, destMulti3.toGray());
     distMulti.convertToFloat();
-
+    
 	auto dir_color = Image::multidirectionalDirection(distMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
 	Image dirMulti = std::move(dir_color.first);
 	Image dirColorMulti = std::move(dir_color.second);
 
-	
     //thresholding
     cv::Scalar meanMulti, stddevMulti;
     cv::meanStdDev(distMulti._Mat(), meanMulti, stddevMulti, cv::Mat());
@@ -194,18 +193,21 @@ int main(int argc, const char * argv[]) {
     cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
     
     Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]);
+    Image localThresholdingMulti = Image::localThresholding(distMulti);
     Image hystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
     Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
 	
-    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti);
+    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti); //gradient.first, gradient.second);
 
-	dirMulti.show("dir multi");
-	distMulti.show("dist multi");
 	hystFinalThresholdingMulti.show("not closed");
-	//Image closure = Image::closure(thinMulti, dirMulti);
+//	Image closure = Image::closure(thinMulti, dirMulti);
     seuil = 0.09f;
     seuil_hyst = 0.02f;
-    
+    cv::Mat patch;
+    cv::getRectSubPix(globalThresholdingMulti._Mat(), cv::Size(500,500), cv::Point(250,250), patch);
+    cv::imshow("dist", distMulti._Mat());
+    cv::imshow("dir", dirMulti._Mat());
+    cv::imshow("patch", patch);
 	/*
     seuillage(destinationNorme, destinationNormeSeuil, seuil);
     
@@ -232,7 +234,7 @@ int main(int argc, const char * argv[]) {
     on_trackbar( seuil_slider, 0 );
     on_trackbar( seuil_hyst_slider, 0 );*/
     
-	
+
 	const std::vector<const cv::Mat*> image_matrices = {
 		&image._Mat(),
 		&destinationX._Mat(),
@@ -247,16 +249,18 @@ int main(int argc, const char * argv[]) {
 		&dirColorMulti._Mat(),
 		&gradient.first._Mat(),
 		&gradient.second._Mat(),
-//        &globalThresholdingMulti._Mat(),
+        &globalThresholdingMulti._Mat(),
         &hystHighThresholdingMulti._Mat(),
         &hystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
 		&destinationDirection._Mat()*/
-	
+
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
-    thinMulti.show("coucou");
-	//closure.show("closure");
+    thinMulti.show("truc");
+    globalThresholdingMulti.show("globalThreshold");
+    localThresholdingMulti.show("localThreshold");
+//	closure.show("closure");
     cv::waitKey(0);
     
     return 0;

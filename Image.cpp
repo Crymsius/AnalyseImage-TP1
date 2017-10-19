@@ -150,6 +150,33 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 	return std::move(std::make_pair(result, direction_color));
 }
 
+float Image::calcLocalThreshold(const Image& source, int size, int i, int j) {
+    cv::Mat patch;
+    cv::getRectSubPix(source._Mat(), cv::Size(size,size), cv::Point(j,i), patch);
+    cv::Scalar mean, stddev, result;
+    cv::meanStdDev(patch, mean, stddev, cv::Mat());
+    result = mean + 1.5 * stddev;
+    return result.val[0];
+}
+
+Image Image::localThresholding(const Image& source) {
+    int size = 50;
+    float localThreshold;
+    Image result(source.height(), source.width());
+    
+    for (int i=0; i < source.height(); ++i) {
+        for (int j=0; j < source.width(); ++j) {
+            localThreshold = calcLocalThreshold(source, size, i, j);
+            if (source.mImage.at<float>(i,j) < localThreshold) {
+                result.mImage.at<float>(i,j) = 0;
+            } else {
+                result.mImage.at<float>(i,j) = 255;
+            }
+        }
+    }
+    return std::move(result);
+}
+
 Image Image::thresholding(const Image& source, const float& threshold) {
     Image result(source.height(), source.width());
     
@@ -169,16 +196,17 @@ Image Image::thresholdingLow(const Image& source, const Image& temp, const float
     Image result(source.height(), source.width());
     
     int count;
-    for (int i=1; i < source.height() - 1; ++i) {
-        for (int j=1; j < source.width() - 1; ++j) {
+    int H = source.height();
+    int W = source.width();
+    for (int i=0; i < H; ++i) {
+        for (int j=0; j < W; ++j) {
             if (source.mImage.at<float>(i,j) < threshold)
                 result.mImage.at<float>(i,j) = 0;
             else {
                 count = 0;
-                for (int k = -1; k < 2; ++k) {
-                    for (int l = -1; l < 2; ++l) {
-                        //et le superieur ?
-                        if (temp.mImage.at<float>(std::max(0,i+k),std::max(0,i+k)) == 255)
+                for (int k = std::max(0,i-1); k < std::min(i+1, H); ++k) {
+                    for (int l = std::max(0,j-1); l < std::min(j+1, W); ++l) {
+                        if (temp.mImage.at<float>(k,l) == 255)
                             count++;
                     }
                 }
@@ -204,29 +232,33 @@ Image Image::thinningMulti(const Image& source, const Image& grad, const Image& 
     for (int i=1; i < grad.height() -1; ++i) {
         for (int j=1; j < grad.width() -1; ++j) {
             if (source.mImage.at<float>(i,j) == 255) {
-                double angle = dir.mImage.at<float>(i,j) + M_PI;
-                if (fmod(angle, M_PI) == 0) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j-1) &&
-                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i,j+1))
+                double angle = fmod ((dir.mImage.at<float>(i,j) * 180./M_PI )+ M_PI, M_PI);
+                if (angle >= 1./2. * M_PI_4 && angle < 3./2. * M_PI_4) {
+                    //zone autour de PI/4
+                    if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j+1) &&
+                        grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i+1,j-1))
                         result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
-                } else if ( fmod(angle, M_PI) == M_PI_4) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j-1) &&
-                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j+1))
-                        result.mImage.at<float>(i,j) = 255;
+                } else if (angle >= 3./2. * M_PI_4 && angle < 5./2. * M_PI_4) {
+                    //zone autour de PI/2
+                    if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j) &&
+                        grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i+1,j))
+                        result.mImage.at<float>(i,j) = 0;
                     else
                         result.mImage.at<float>(i,j) = 0;
-                } else if (fmod(angle, M_PI) == M_PI_2) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j) &&
-                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j))
-                        result.mImage.at<float>(i,j) = 255;
+                } else if (angle >= 5./2. * M_PI_4 && angle < 7./2. * M_PI_4) {
+                    //zone autour de 3PI/4
+                    if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i+1,j+1) &&
+                        grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j-1))
+                        result.mImage.at<float>(i,j) = 0;
                     else
                         result.mImage.at<float>(i,j) = 0;
-                } else if ( fmod(angle, M_PI) == 3 * (M_PI_4)) {
-                    if (grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i+1,j-1) &&
-                        grad.mImage.at<float>(i,j) >= grad.mImage.at<float>(i-1,j+1))
-                        result.mImage.at<float>(i,j) = 255;
+                } else {
+                    //zone autour de 0 et de PI
+                    if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i,j-1) &&
+                        grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i,j+1))
+                        result.mImage.at<float>(i,j) = 0;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 }
