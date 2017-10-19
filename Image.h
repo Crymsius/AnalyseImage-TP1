@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <opencv2/core/mat.hpp>
 
 class Kernel;
@@ -45,7 +45,7 @@ public:
 	                                                         const Image& gray2, const Image& gray3);
     
     static float calcLocalThreshold(const Image& source, int size, int i, int j);
-    static Image localThresholding(const Image& source);
+    static Image localThresholding(const Image& source, const int size);
     static Image thresholding(const Image& source, const float& threshold);
     static Image thresholdingHysteresis(const Image& source, const float& thresholdHigh, const float& thresholdLow);
     static Image thresholdingLow(const Image& source, const Image& temp, const float& threshold);
