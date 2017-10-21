@@ -23,78 +23,24 @@
 #include "json.hpp"
 #include <fstream>
 
-
-const int seuil_slider_max = 100;
-int seuil_slider = 20;
-float seuil;
-
-const int seuil_hyst_slider_max = 100;
-int seuil_hyst_slider = 10;
-float seuil_hyst;
 cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows);
 
+struct myData{
+    Image source_image;
+    Image thresholded_image;
+    float threshold;
+    int trackbar_max;
+};
 
-void seuillage (cv::Mat& source, cv::Mat& destination, float& threshold) {
-    for (int j=0; j < source.size().width; ++j) {
-        for (int i=0; i < source.size().height; ++i) {
-            if (source.at<float>(i,j) < threshold*255)
-                destination.at<float>(i,j) = 0;
-            else
-                destination.at<float>(i,j) = 255;
-        }
-    }
-}
-
-
-void seuillage_second (cv::Mat& source, cv::Mat& intermediaire, cv::Mat& destination, float& threshold) {
-	for (int j=0; j < destination.size().width; ++j) {
-        for (int i=0; i < destination.size().height; ++i) {
-            if (source.at<float>(i,j) < threshold*255)
-                destination.at<float>(i,j) = 0;
-            else {
-                int count = 0;
-                //faire un test sur le max(0,convolutionsize())
-                for (int k = -1; k < 2; ++k) {
-                    for (int l = -1; l < 2; ++l) {
-                        if (intermediaire.at<float>(i+k,j+l) == 255)
-                            count++;
-                    }
-                }
-                if (count != 0)
-                    destination.at<float>(i,j) = 254;
-            }
-        }
-    }
-}
-
-void seuil_hysteresis (cv::Mat& source, cv::Mat& intermediaire, cv::Mat& destination, float& threshold_haut, float& threshold_bas ) {
-    /*seuillage(destinationNorme, seuilHaut, threshold_haut);
-    seuillage_second (destinationNorme, seuilHaut, seuilHyst, threshold_bas);
-    cv::imshow("haut", seuilHaut);*/
-}
-
-void on_trackbar( int, void* ) {
-   /* seuil = float(seuil_slider)/seuil_slider_max;
-    seuillage(destinationNorme, destinationNormeSeuil, seuil);
-    cv::imshow("gradientNormeSeuil", destinationNormeSeuil);
-    
-    seuil_hyst = float(seuil_hyst_slider)/seuil_hyst_slider_max;
-    seuil_hysteresis(destinationNorme, seuilHaut, seuilHyst, seuil, seuil_hyst);
-    cv::imshow("Hysteresis", seuilHyst);*/
-}
-
-float findThreshold(const cv::Mat img) {
-    
-    return 1.f;
-}
-
-void bidirectionnal()
-{
-	
+void on_trackbar( int trackbar_value, void *userdata) {
+    myData pushed_data = *((myData*)&userdata);
+    pushed_data.threshold = (float) trackbar_value/pushed_data.trackbar_max;
+    pushed_data.thresholded_image = Image::thresholding(pushed_data.source_image, pushed_data.threshold);
+    cv::imshow("gradientNormeSeuil", pushed_data.thresholded_image._Mat());
 }
 
 int main(int argc, const char * argv[]) {
-	seuil = 0.0f;
+	
 
 	std::ifstream stream("config.json");
 	nlohmann::json json;
@@ -159,67 +105,99 @@ int main(int argc, const char * argv[]) {
 
 	const unsigned new_height = image.height() - 2;
 	const unsigned new_width = image.width() - 2;
-
+    
 	// bidirectionnal
     Image destinationX = image.convolution(bidirectionnal_kernels[0]);
     Image destinationY = image.convolution(bidirectionnal_kernels[1]);
 	auto gradient = Image::bidirectionalGradient(destinationX, destinationY);
     
 	// multidirectionnal
-    Image destMulti0 = image.convolution(multidirectionnal_kernels[0]);
-    Image destMulti1 = image.convolution(multidirectionnal_kernels[1]);
-    Image destMulti2 = image.convolution(multidirectionnal_kernels[2]);
-    Image destMulti3 = image.convolution(multidirectionnal_kernels[3]);
+    Image convoMulti0 = image.convolution(multidirectionnal_kernels[0]);
+    Image convoMulti1 = image.convolution(multidirectionnal_kernels[1]);
+    Image convoMulti2 = image.convolution(multidirectionnal_kernels[2]);
+    Image convoMulti3 = image.convolution(multidirectionnal_kernels[3]);
 	
-	Image grayMulti0 = destMulti0.toGray();
-	const Image grayMulti1 = destMulti1.toGray();
-	const Image grayMulti2 = destMulti2.toGray();
-	const Image grayMulti3 = destMulti2.toGray();
+    Image grayMulti0 = convoMulti0.toGray();
+    Image grayMulti1 = convoMulti1.toGray();
+    Image grayMulti2 = convoMulti2.toGray();
+    Image grayMulti3 = convoMulti2.toGray();
+    grayMulti0.convertToFloat();
+    grayMulti1.convertToFloat();
+    grayMulti2.convertToFloat();
+    grayMulti3.convertToFloat();
 
-	Image distMulti = Image::max(destMulti0.toGray(), destMulti1.toGray());
-    distMulti = Image::max(distMulti, destMulti2.toGray());
-    distMulti = Image::max(distMulti, destMulti3.toGray());
-    distMulti.convertToFloat();
+//	Image distMulti = Image::max(destMulti0.toGray(), destMulti1.toGray());
+//    distMulti = Image::max(distMulti, destMulti2.toGray());
+//    distMulti = Image::max(distMulti, destMulti3.toGray());
+//    distMulti.convertToFloat();
+    Image distMulti = Image::max(convoMulti0, convoMulti1);
+    distMulti = Image::max(distMulti, convoMulti2);
+    distMulti = Image::max(distMulti, convoMulti3);
     
-	auto dir_color = Image::multidirectionalDirection(distMulti, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
+    Image distMultiGray = distMulti.toGray();
+    distMultiGray.convertToFloat();
+	
+    auto dir_color = Image::multidirectionalDirection(distMultiGray, grayMulti0, grayMulti1, grayMulti2, grayMulti3);
+//    auto dir_color = Image::multidirectionalDirection(distMulti, convoMulti0, convoMulti1, convoMulti2, convoMulti3);
 	Image dirMulti = std::move(dir_color.first);
 	Image dirColorMulti = std::move(dir_color.second);
 
     //thresholding
     cv::Scalar meanMulti, stddevMulti;
-    cv::meanStdDev(distMulti._Mat(), meanMulti, stddevMulti, cv::Mat());
+    cv::meanStdDev(distMultiGray._Mat(), meanMulti, stddevMulti, cv::Mat());
     cv::Scalar globalThreshold = meanMulti + 1.5 * stddevMulti;
     cv::Scalar highThreshold = meanMulti + 1.5 * stddevMulti;
     cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
     
-    Image globalThresholdingMulti = Image::thresholding(distMulti, globalThreshold.val[0]);
-    Image localThresholdingMulti = Image::localThresholding(distMulti);
-    Image hystHighThresholdingMulti = Image::thresholding(distMulti, highThreshold.val[0]);
-    Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMulti, highThreshold.val[0], lowThreshold.val[0]);
+    Image globalThresholdingMulti = Image::thresholding(distMultiGray, globalThreshold.val[0]);
+    Image localThresholdingMulti = Image::localThresholding(distMultiGray, 20);
+    Image hystHighThresholdingMulti = Image::thresholding(distMultiGray, highThreshold.val[0]);
+    Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMultiGray, highThreshold.val[0], lowThreshold.val[0]);
 	
-    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti); //gradient.first, gradient.second);
+//    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMultiGray, dirMulti);
+    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, gradient.first, gradient.second);
 
 	hystFinalThresholdingMulti.show("not closed");
-	Image closure = Image::closure(localThresholdingMulti, distMulti);
-    seuil = 0.09f;
-    seuil_hyst = 0.02f;
-    cv::Mat patch;
-    cv::getRectSubPix(globalThresholdingMulti._Mat(), cv::Size(500,500), cv::Point(250,250), patch);
-/*    cv::imshow("dist", distMulti._Mat());
-    cv::imshow("dir", dirMulti._Mat());
-    cv::imshow("patch", patch);
+//	Image closure = Image::closure(thinMulti, dirMulti);
     
-
+    cv::imshow("dist", distMultiGray._Mat());
+    cv::imshow("dir", dirMulti._Mat());
+    
+    const int value_slider_max = 100;
+    int value_slider = 100;
+    
+    
+    /// Create Window
+    cv::namedWindow("gradientNormeSeuil", 1);
+    /// Create Trackbars
+    char TrackbarThresholdName[50];
+    sprintf( TrackbarThresholdName, "seuil");
+    
+    float threshold_from_slider;
+    Image threshold_slider_high;
+    Image threshold_slider_hysteresis;
+    
+    myData data;
+    data.source_image = distMultiGray;
+    data.thresholded_image = threshold_slider_high;
+    data.threshold = threshold_from_slider;
+    data.trackbar_max = value_slider_max;
+   
+    cv::createTrackbar(TrackbarThresholdName, "gradientNormeSeuil", &value_slider, value_slider_max, on_trackbar, &data);
+    
+    on_trackbar(value_slider, 0);
+    
 	const std::vector<const cv::Mat*> image_matrices = {
 		&image._Mat(),
 		&destinationX._Mat(),
 		&destinationY._Mat(),
-		&destMulti0._Mat(),
-		&destMulti1._Mat(),
-		&destMulti2._Mat(),
-		&destMulti3._Mat(),
-		&grayMulti0._Mat(),
+		&convoMulti0._Mat(),
+		&convoMulti1._Mat(),
+		&convoMulti2._Mat(),
+		&convoMulti3._Mat(),
+//		&grayMulti0._Mat(),
 		&distMulti._Mat(),
+        &distMultiGray._Mat(),
 		&dirMulti._Mat(),
 		&dirColorMulti._Mat(),
 		&gradient.first._Mat(),
@@ -228,37 +206,18 @@ int main(int argc, const char * argv[]) {
         &hystHighThresholdingMulti._Mat(),
         &hystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
-		&destinationDirection._Mat()#1#
+		&destinationDirection._Mat()*/
 
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
-    thinMulti.show("truc");
+    thinMulti.show("affinage");
     globalThresholdingMulti.show("globalThreshold");
     localThresholdingMulti.show("localThreshold");
-	closure.show("closure");
-	*/
-	image.show("image");
-	destinationX.show("destinationX");
-	destinationY.show("destinationY");
-	destMulti0.show("destMulti0");
-	destMulti1.show("destMulti1");
-	destMulti2.show("destMulti2");
-	destMulti3.show("destMulti3");
-	grayMulti0.show("grayMulti0");
-	distMulti.show("distMulti");
-	dirMulti.show("dirMulti");
-	dirColorMulti.show("dirColorMulti");
-	gradient.first.show("gradient.first");
-	gradient.second.show("gradient.second");
-	globalThresholdingMulti.show("globalThresholdingMulti");
-	hystHighThresholdingMulti.show("hystHighThresholdingMulti");
-	hystFinalThresholdingMulti.show("hystFinalThresholdingMulti");
-
+//	closure.show("closure");
     cv::waitKey(0);
     
     return 0;
 }
-
 
 
 /**

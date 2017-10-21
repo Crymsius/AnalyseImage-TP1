@@ -1,4 +1,4 @@
-﻿#include "Image.h"
+#include "Image.h"
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
 #include "Kernel.h"
@@ -122,26 +122,28 @@ std::pair<Image, Image> Image::multidirectionalDirection(const Image& distance, 
 	Image direction_color(distance.height(), distance.width());
 	direction_color.mImage = cv::Mat(distance.height(), distance.width(), CV_8UC3);
 
+    std::cout << distance._Mat().type();
+    std::cout << gray0._Mat().type();
 	for (auto i = 0; i < distance.height(); ++i) {
 		for (auto j = 0; j < distance.width(); ++j) {
 			if (distance.mImage.at<float>(i, j) == 0) {
-				result.mImage.at<float>(i, j) = 0;
+				result.mImage.at<float>(i, j) = 0.f;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 0);
 			}
-			else if (distance.mImage.at<float>(i, j) == gray0.mImage.at<uchar>(i, j)) {
-				result.mImage.at<float>(i, j) = 0;
+			else if (distance.mImage.at<float>(i, j) == gray0.mImage.at<float>(i, j)) {
+				result.mImage.at<float>(i, j) = 0.f;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(200, 0, 0);
 			}
-			else if (distance.mImage.at<float>(i, j) == gray1.mImage.at<uchar>(i, j)) {
-				result.mImage.at<float>(i, j) = 1 * (M_PI_4);
+			else if (distance.mImage.at<float>(i, j) == gray1.mImage.at<float>(i, j)) {
+				result.mImage.at<float>(i, j) = M_PI_4;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 200, 0);
 			}
-			else if (distance.mImage.at<float>(i, j) == gray2.mImage.at<uchar>(i, j)) {
-				result.mImage.at<float>(i, j) = 2 * (M_PI_4);
+			else if (distance.mImage.at<float>(i, j) == gray2.mImage.at<float>(i, j)) {
+				result.mImage.at<float>(i, j) = M_PI_2;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 200);
 			}
 			else {
-				result.mImage.at<float>(i, j) = 3 * (M_PI_4);
+				result.mImage.at<float>(i, j) = 3.f * M_PI_4;
 				direction_color.mImage.at<cv::Vec3b>(i, j) = cv::Vec3b(255, 255, 255);
 			}
 		}
@@ -155,22 +157,21 @@ float Image::calcLocalThreshold(const Image& source, int size, int i, int j) {
     cv::getRectSubPix(source._Mat(), cv::Size(size,size), cv::Point(j,i), patch);
     cv::Scalar mean, stddev, result;
     cv::meanStdDev(patch, mean, stddev, cv::Mat());
-    result = mean + 1.5 * stddev;
+    result =  mean;
     return result.val[0];
 }
 
-Image Image::localThresholding(const Image& source) {
-    int size = 50;
+Image Image::localThresholding(const Image& source, const int size) {
     float localThreshold;
     Image result(source.height(), source.width());
     
     for (int i=0; i < source.height(); ++i) {
         for (int j=0; j < source.width(); ++j) {
             localThreshold = calcLocalThreshold(source, size, i, j);
-            if (source.mImage.at<float>(i,j) < localThreshold) {
-                result.mImage.at<float>(i,j) = 0;
-            } else {
+            if (source.mImage.at<float>(i,j) > localThreshold) {
                 result.mImage.at<float>(i,j) = 255;
+            } else {
+                result.mImage.at<float>(i,j) = 0;
             }
         }
     }
@@ -232,7 +233,7 @@ Image Image::thinningMulti(const Image& source, const Image& grad, const Image& 
     for (int i=1; i < grad.height() -1; ++i) {
         for (int j=1; j < grad.width() -1; ++j) {
             if (source.mImage.at<float>(i,j) == 255) {
-                double angle = fmod ((dir.mImage.at<float>(i,j) * 180./M_PI )+ M_PI, M_PI);
+                double angle = fmod ((dir.mImage.at<float>(i,j)) + M_PI, M_PI);
                 if (angle >= 1./2. * M_PI_4 && angle < 3./2. * M_PI_4) {
                     //zone autour de PI/4
                     if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j+1) &&
@@ -244,21 +245,21 @@ Image Image::thinningMulti(const Image& source, const Image& grad, const Image& 
                     //zone autour de PI/2
                     if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j) &&
                         grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i+1,j))
-                        result.mImage.at<float>(i,j) = 0;
+                        result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 } else if (angle >= 5./2. * M_PI_4 && angle < 7./2. * M_PI_4) {
                     //zone autour de 3PI/4
                     if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i+1,j+1) &&
                         grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i-1,j-1))
-                        result.mImage.at<float>(i,j) = 0;
+                        result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 } else {
                     //zone autour de 0 et de PI
                     if (grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i,j-1) &&
                         grad.mImage.at<float>(i,j) > grad.mImage.at<float>(i,j+1))
-                        result.mImage.at<float>(i,j) = 0;
+                        result.mImage.at<float>(i,j) = 255;
                     else
                         result.mImage.at<float>(i,j) = 0;
                 }
