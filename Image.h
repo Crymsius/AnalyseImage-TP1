@@ -9,7 +9,7 @@ public:
 	Image();
 	Image(unsigned height, unsigned width);
 	Image(const Image& other)
-		: mImage(other.mImage)
+		: mImage(other.mImage.clone())
 	{
 	}
 
@@ -22,7 +22,7 @@ public:
 	{
 		if (this == &other)
 			return *this;
-		mImage = other.mImage;
+		mImage = other.mImage.clone();
 		return *this;
 	}
 

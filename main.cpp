@@ -25,6 +25,20 @@
 
 cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows);
 
+struct myData{
+    Image source_image;
+    Image thresholded_image;
+    float threshold;
+    int trackbar_max;
+};
+
+void on_trackbar( int trackbar_value, void *userdata) {
+    myData pushed_data = *((myData*)&userdata);
+    pushed_data.threshold = (float) trackbar_value/pushed_data.trackbar_max;
+    pushed_data.thresholded_image = Image::thresholding(pushed_data.source_image, pushed_data.threshold);
+    cv::imshow("gradientNormeSeuil", pushed_data.thresholded_image._Mat());
+}
+
 int main(int argc, const char * argv[]) {
 	
 
@@ -91,7 +105,7 @@ int main(int argc, const char * argv[]) {
 
 	const unsigned new_height = image.height() - 2;
 	const unsigned new_width = image.width() - 2;
-
+    
 	// bidirectionnal
     Image destinationX = image.convolution(bidirectionnal_kernels[0]);
     Image destinationY = image.convolution(bidirectionnal_kernels[1]);
@@ -136,18 +150,42 @@ int main(int argc, const char * argv[]) {
     cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
     
     Image globalThresholdingMulti = Image::thresholding(distMultiGray, globalThreshold.val[0]);
-    Image localThresholdingMulti = Image::localThresholding(distMultiGray, 24);
+    Image localThresholdingMulti = Image::localThresholding(distMultiGray, 20);
     Image hystHighThresholdingMulti = Image::thresholding(distMultiGray, highThreshold.val[0]);
     Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMultiGray, highThreshold.val[0], lowThreshold.val[0]);
 	
-    Image thinMulti = Image::thinningMulti(localThresholdingMulti, distMultiGray, dirMulti);
-//    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, gradient.first, gradient.second);
+//    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMultiGray, dirMulti);
+    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, gradient.first, gradient.second);
 
 	hystFinalThresholdingMulti.show("not closed");
 //	Image closure = Image::closure(thinMulti, dirMulti);
     
-    cv::imshow("dist", grayMulti0._Mat());
+    cv::imshow("dist", distMultiGray._Mat());
     cv::imshow("dir", dirMulti._Mat());
+    
+    const int value_slider_max = 100;
+    int value_slider = 100;
+    
+    
+    /// Create Window
+    cv::namedWindow("gradientNormeSeuil", 1);
+    /// Create Trackbars
+    char TrackbarThresholdName[50];
+    sprintf( TrackbarThresholdName, "seuil");
+    
+    float threshold_from_slider;
+    Image threshold_slider_high;
+    Image threshold_slider_hysteresis;
+    
+    myData data;
+    data.source_image = distMultiGray;
+    data.thresholded_image = threshold_slider_high;
+    data.threshold = threshold_from_slider;
+    data.trackbar_max = value_slider_max;
+   
+    cv::createTrackbar(TrackbarThresholdName, "gradientNormeSeuil", &value_slider, value_slider_max, on_trackbar, &data);
+    
+    on_trackbar(value_slider, 0);
     
 	const std::vector<const cv::Mat*> image_matrices = {
 		&image._Mat(),
@@ -180,7 +218,6 @@ int main(int argc, const char * argv[]) {
     
     return 0;
 }
-
 
 
 /**

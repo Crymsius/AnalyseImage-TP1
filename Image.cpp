@@ -161,7 +161,7 @@ float Image::calcLocalThreshold(const Image& source, int size, int i, int j) {
     cv::getRectSubPix(source._Mat(), cv::Size(size,size), cv::Point(j,i), patch);
     cv::Scalar mean, stddev, result;
     cv::meanStdDev(patch, mean, stddev, cv::Mat());
-    result = mean + 1.5 * stddev;
+    result =  mean;
     return result.val[0];
 }
 
