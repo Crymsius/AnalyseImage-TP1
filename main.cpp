@@ -200,39 +200,14 @@ int main(int argc, const char * argv[]) {
     Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMulti, dirMulti); //gradient.first, gradient.second);
 
 	hystFinalThresholdingMulti.show("not closed");
-//	Image closure = Image::closure(thinMulti, dirMulti);
+	Image closure = Image::closure(localThresholdingMulti, distMulti);
     seuil = 0.09f;
     seuil_hyst = 0.02f;
     cv::Mat patch;
     cv::getRectSubPix(globalThresholdingMulti._Mat(), cv::Size(500,500), cv::Point(250,250), patch);
-    cv::imshow("dist", distMulti._Mat());
+/*    cv::imshow("dist", distMulti._Mat());
     cv::imshow("dir", dirMulti._Mat());
     cv::imshow("patch", patch);
-	/*
-    seuillage(destinationNorme, destinationNormeSeuil, seuil);
-    
-    GrisChan[0] = destinationNorme/255;
-    GrisChan[1] = destinationNorme/255;
-    GrisChan[2] = destinationNorme/255;
-    merge(GrisChan, 3, destinationNormeGris);
-    
-    /// Create Window
-    cv::namedWindow("gradientNormeSeuil", 1);
-    cv::namedWindow("Hysteresis", 1);
-    
-    /// Create Trackbars
-    char TrackbarThresholdName[50];
-    //sprintf( TrackbarThresholdName, "seuil");
-    char TrackbarHystName[50];
-    //sprintf( TrackbarHystName, "hysteresis");
-    
-    cv::createTrackbar( TrackbarThresholdName, "gradientNormeSeuil", &seuil_slider, seuil_slider_max, on_trackbar );
-    cv::createTrackbar( TrackbarHystName, "Hysteresis", &seuil_hyst_slider, seuil_hyst_slider_max, on_trackbar );
-    
-    seuil_hysteresis (destinationNorme, seuilHaut, seuilHyst, seuil, seuil_hyst);
-    /// Show some stuff
-    on_trackbar( seuil_slider, 0 );
-    on_trackbar( seuil_hyst_slider, 0 );*/
     
 
 	const std::vector<const cv::Mat*> image_matrices = {
@@ -253,14 +228,32 @@ int main(int argc, const char * argv[]) {
         &hystHighThresholdingMulti._Mat(),
         &hystFinalThresholdingMulti._Mat(),
 		/*&destinationNormeGris._Mat(),
-		&destinationDirection._Mat()*/
+		&destinationDirection._Mat()#1#
 
 	};
 	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
     thinMulti.show("truc");
     globalThresholdingMulti.show("globalThreshold");
     localThresholdingMulti.show("localThreshold");
-//	closure.show("closure");
+	closure.show("closure");
+	*/
+	image.show("image");
+	destinationX.show("destinationX");
+	destinationY.show("destinationY");
+	destMulti0.show("destMulti0");
+	destMulti1.show("destMulti1");
+	destMulti2.show("destMulti2");
+	destMulti3.show("destMulti3");
+	grayMulti0.show("grayMulti0");
+	distMulti.show("distMulti");
+	dirMulti.show("dirMulti");
+	dirColorMulti.show("dirColorMulti");
+	gradient.first.show("gradient.first");
+	gradient.second.show("gradient.second");
+	globalThresholdingMulti.show("globalThresholdingMulti");
+	hystHighThresholdingMulti.show("hystHighThresholdingMulti");
+	hystFinalThresholdingMulti.show("hystFinalThresholdingMulti");
+
     cv::waitKey(0);
     
     return 0;

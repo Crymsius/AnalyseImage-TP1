@@ -54,6 +54,8 @@ public:
     
     static Image max(const Image& i0, const Image& i1);
 	
+	Image closure2(const Image & contours, const Image & direction);
+
 	static Image closure(const Image& contours, const Image& direction);
 
 	const cv::Mat& _Mat() const;
