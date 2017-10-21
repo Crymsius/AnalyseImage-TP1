@@ -39,6 +39,7 @@ public:
 	Image convolution(const Kernel& k) const;
 	Image toGray() const;
     void convertToFloat ();
+	cv::Mat* _MatPtr();
 
 	static std::pair<Image, Image> bidirectionalGradient(const Image& i1, const Image& i2);
 	static std::pair<Image, Image> multidirectionalDirection(const Image& distance, const Image& gray0, const Image& gray1,
@@ -53,10 +54,7 @@ public:
     static Image thinningMulti(const Image& source, const Image& grad, const Image& dir);
     
     static Image max(const Image& i0, const Image& i1);
-	
-	Image closure2(const Image & contours, const Image & direction);
-
-	static Image closure(const Image& contours, const Image& direction);
+	static Image closure(const Image& source, const Image& norme);
 
 	const cv::Mat& _Mat() const;
 

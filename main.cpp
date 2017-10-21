@@ -25,20 +25,6 @@
 
 cv::Mat make_canvas(const std::vector<const cv::Mat*>& vecMat, int windowHeight, int nRows);
 
-struct myData{
-    Image source_image;
-    Image thresholded_image;
-    float threshold;
-    int trackbar_max;
-};
-
-void on_trackbar( int trackbar_value, void *userdata) {
-    myData pushed_data = *((myData*)&userdata);
-    pushed_data.threshold = (float) trackbar_value/pushed_data.trackbar_max;
-    pushed_data.thresholded_image = Image::thresholding(pushed_data.source_image, pushed_data.threshold);
-    cv::imshow("gradientNormeSeuil", pushed_data.thresholded_image._Mat());
-}
-
 int main(int argc, const char * argv[]) {
 	
 
@@ -99,8 +85,6 @@ int main(int argc, const char * argv[]) {
 		exit(-4);
 	}
 
-	std::string threshold_type = json["seuillage"];
-
 	Image destinationNorme, destinationDirection, destinationNormeGris, GrisChan[3];
 
 	const unsigned new_height = image.height() - 2;
@@ -126,10 +110,6 @@ int main(int argc, const char * argv[]) {
     grayMulti2.convertToFloat();
     grayMulti3.convertToFloat();
 
-//	Image distMulti = Image::max(destMulti0.toGray(), destMulti1.toGray());
-//    distMulti = Image::max(distMulti, destMulti2.toGray());
-//    distMulti = Image::max(distMulti, destMulti3.toGray());
-//    distMulti.convertToFloat();
     Image distMulti = Image::max(convoMulti0, convoMulti1);
     distMulti = Image::max(distMulti, convoMulti2);
     distMulti = Image::max(distMulti, convoMulti3);
@@ -148,45 +128,15 @@ int main(int argc, const char * argv[]) {
     cv::Scalar globalThreshold = meanMulti + 1.5 * stddevMulti;
     cv::Scalar highThreshold = meanMulti + 1.5 * stddevMulti;
     cv::Scalar lowThreshold = meanMulti + 1.2 * stddevMulti;
-    
+
+	
     Image globalThresholdingMulti = Image::thresholding(distMultiGray, globalThreshold.val[0]);
     Image localThresholdingMulti = Image::localThresholding(distMultiGray, 20);
     Image hystHighThresholdingMulti = Image::thresholding(distMultiGray, highThreshold.val[0]);
     Image hystFinalThresholdingMulti = Image::thresholdingHysteresis(distMultiGray, highThreshold.val[0], lowThreshold.val[0]);
 	
-//    Image thinMulti = Image::thinningMulti(globalThresholdingMulti, distMultiGray, dirMulti);
     Image thinMulti = Image::thinningMulti(globalThresholdingMulti, gradient.first, gradient.second);
-
-	hystFinalThresholdingMulti.show("not closed");
-//	Image closure = Image::closure(thinMulti, dirMulti);
-    
-    cv::imshow("dist", distMultiGray._Mat());
-    cv::imshow("dir", dirMulti._Mat());
-    
-    const int value_slider_max = 100;
-    int value_slider = 100;
-    
-    
-    /// Create Window
-    cv::namedWindow("gradientNormeSeuil", 1);
-    /// Create Trackbars
-    char TrackbarThresholdName[50];
-    sprintf( TrackbarThresholdName, "seuil");
-    
-    float threshold_from_slider;
-    Image threshold_slider_high;
-    Image threshold_slider_hysteresis;
-    
-    myData data;
-    data.source_image = distMultiGray;
-    data.thresholded_image = threshold_slider_high;
-    data.threshold = threshold_from_slider;
-    data.trackbar_max = value_slider_max;
-   
-    cv::createTrackbar(TrackbarThresholdName, "gradientNormeSeuil", &value_slider, value_slider_max, on_trackbar, &data);
-    
-    on_trackbar(value_slider, 0);
-    
+	    
 	const std::vector<const cv::Mat*> image_matrices = {
 		&image._Mat(),
 		&destinationX._Mat(),
@@ -195,25 +145,17 @@ int main(int argc, const char * argv[]) {
 		&convoMulti1._Mat(),
 		&convoMulti2._Mat(),
 		&convoMulti3._Mat(),
-//		&grayMulti0._Mat(),
-		&distMulti._Mat(),
         &distMultiGray._Mat(),
-		&dirMulti._Mat(),
 		&dirColorMulti._Mat(),
 		&gradient.first._Mat(),
-		&gradient.second._Mat(),
-        &globalThresholdingMulti._Mat(),
-        &hystHighThresholdingMulti._Mat(),
-        &hystFinalThresholdingMulti._Mat(),
-		/*&destinationNormeGris._Mat(),
-		&destinationDirection._Mat()*/
+		&gradient.second._Mat()
 
 	};
-	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 4));
+	cv::imshow("AnalyseImage_TP1",make_canvas(image_matrices, 800, 3));
     thinMulti.show("affinage");
     globalThresholdingMulti.show("globalThreshold");
     localThresholdingMulti.show("localThreshold");
-//	closure.show("closure");
+	hystFinalThresholdingMulti.show("hystThreashold");
     cv::waitKey(0);
     
     return 0;
